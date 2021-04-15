@@ -9,8 +9,9 @@ import json
 import argparse
 import numpy as np
 import open3d as o3d
+import datetime
 
-proj_path = '/is/ps2/yzhang/workspaces/PSI-internal'
+proj_path = '/home/ryeon/project/psi'
 sys.path.append(proj_path)
 
 
@@ -382,14 +383,17 @@ if __name__ == '__main__':
 
 
     ### setup dataset paths and training configs.
-    dataset_path = '/is/cluster/yzhang/PROXE'
+    dataset_path = '/data/proxe'
 
 
     if save_dir == 'None':
         print('[error] the checkpoint save directory should be specified.')
         sys.exit(0)
     else:
-        save_dir = save_dir
+        KST = datetime.timezone(datetime.timedelta(hours=9))
+        save_folder = str(datetime.datetime.now(tz=KST))[5:-16]
+        save_folder = save_folder.replace(" ", "_")
+        save_dir = save_dir + "/checkpoints/s2/{}".format(save_folder)
         resume_training=True
 
     if args.only_vircam == 1:

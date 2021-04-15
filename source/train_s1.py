@@ -1,18 +1,15 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
-
-
 import sys, os, glob
 import pdb
 import json
 import argparse
 import numpy as np
 import open3d as o3d
+import datetime
 
-
-
-proj_path = '/is/ps2/yzhang/workspaces/PSI-internal'
+proj_path = '/home/ryeon/project/psi'
 sys.path.append(proj_path)
 
 import torch
@@ -32,8 +29,6 @@ from batch_gen_hdf5 import BatchGeneratorWithSceneMesh
 import pdb
 
 import time
-
-
 
 class TrainOP:
     def __init__(self, trainconfig, lossconfig):
@@ -372,7 +367,7 @@ if __name__ == '__main__':
 
 
     ### setup dataset paths and traing configures
-    dataset_path = '/is/cluster/yzhang/PROXE'
+    dataset_path = '/data/proxe'
     
     if save_dir == 'None':
         print('[error] the checkpoint save directory should be specified.')
@@ -383,10 +378,10 @@ if __name__ == '__main__':
 
 
     if args.only_vircam == 1:
-        trainfile = os.path.join(dataset_path, 'virtualcams_v2.hdf5')
+        trainfile = os.path.join(dataset_path, 'virtualcams_TNoise0.5.hdf5')
     else:
-        trainfile = [os.path.join(dataset_path, 'virtualcams_v2.hdf5'), 
-                     os.path.join(dataset_path, 'realcams_v2.hdf5')]
+        trainfile = [os.path.join(dataset_path, 'virtualcams_TNoise0.5.hdf5'),
+                     os.path.join(dataset_path, 'realcams.hdf5')]
 
 
     trainconfig={
@@ -394,16 +389,18 @@ if __name__ == '__main__':
         'scene_verts_path': os.path.join(dataset_path, 'scenes_downsampled'),
         'scene_sdf_path': os.path.join(dataset_path, 'scenes_sdf'),
         'scene_model_ckpt': os.path.join(proj_path,'data/resnet18.pth'),
-        'human_model_path': '/is/ps2/yzhang/body_models/VPoser',
-        'vposer_ckpt_path': '/is/ps2/yzhang/body_models/VPoser/vposer_v1_0',
+        # 'human_model_path': '/is/ps2/yzhang/body_models/VPoser',
+        # 'vposer_ckpt_path': '/is/ps2/yzhang/body_models/VPoser/vposer_v1_0',
+        'human_model_path': '/data/smpl_models',
+        'vposer_ckpt_path': '/data/smpl_models/vposer_v1_0',
         'init_lr_s': args.lr_s,
         'init_lr_h': args.lr_h,
         'batch_size': args.batch_size, # e.g. 30
         'epoch': args.num_epoch,
         'loss_weight_anealing': True,
         'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-        'fine_tuning': None, 
-        'save_dir': save_dir, 
+        'fine_tuning': None,
+        'save_dir': save_dir,
         'contact_id_folder': os.path.join(dataset_path, 'body_segments'),
         'contact_part': ['back','butt','L_Hand','R_Hand','L_Leg','R_Leg','thighs'],
         'saving_per_X_ep': 2,
