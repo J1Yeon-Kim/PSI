@@ -34,8 +34,6 @@ import pdb
 import time
 
 
-
-
 class TrainOP:
     def __init__(self, trainconfig, lossconfig):
         for key, val in trainconfig.items():
@@ -45,10 +43,11 @@ class TrainOP:
         for key, val in lossconfig.items():
             setattr(self, key, val)
 
-
         if not os.path.exists(self.save_dir):
             os.mkdir(self.save_dir)
 
+        if len(self.ckp_dir) > 0:
+            self.resume_training=True
 
         ### define model
 
@@ -219,7 +218,7 @@ class TrainOP:
 
         starting_ep = 0
         if self.resume_training:
-            ckp_list = sorted(glob.glob(os.path.join(self.save_dir,'epoch-*.ckp')),
+            ckp_list = sorted(glob.glob(os.path.join(self.ckp_dir,'epoch-*.ckp')),
                                 key=os.path.getmtime)
             if len(ckp_list)>0:
                 checkpoint = torch.load(ckp_list[-1])
@@ -316,7 +315,7 @@ class TrainOP:
                                 'epoch': ep+1,
                                 'model_h_state_dict': self.model_h.state_dict(),
                                 'optimizer_h_state_dict': self.optimizer_h.state_dict(),
-                                }, self.save_dir + "/epoch-{:06d}".format(ep + 1) + ".ckp")
+                                }, self.save_dir_s2 + "/epoch-{:06d}".format(ep + 1) + ".ckp")
 
             batch_gen.reset()
 
@@ -355,8 +354,7 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_dir', type=str, default=os.getcwd(),
-                        help='dir for checkpoints')
+    parser.add_argument('--ckp_dir', type=str, default='', help='dir for checkpoints')
 
     parser.add_argument('--batch_size', type=int, default=128,
                         help='batch size to train')
@@ -379,28 +377,23 @@ if __name__ == '__main__':
 
 
     args = parser.parse_args()
-    save_dir = args.save_dir
-
 
     ### setup dataset paths and training configs.
     dataset_path = '/data/proxe'
 
+    KST = datetime.timezone(datetime.timedelta(hours=9))
+    save_folder = str(datetime.datetime.now(tz=KST))[5:-16]
+    save_folder = save_folder.replace(" ", "_")
+    save_dir= '/home/ryeon/project/psi/checkpoints/s2/{}'.format(save_folder)
 
-    if save_dir == 'None':
-        print('[error] the checkpoint save directory should be specified.')
-        sys.exit(0)
-    else:
-        KST = datetime.timezone(datetime.timedelta(hours=9))
-        save_folder = str(datetime.datetime.now(tz=KST))[5:-16]
-        save_folder = save_folder.replace(" ", "_")
-        save_dir = save_dir + "/checkpoints/s2/{}".format(save_folder)
-        resume_training=True
+    ckp_dir = args.ckp_dir
+    resume_training=False
 
     if args.only_vircam == 1:
-        trainfile = os.path.join(dataset_path, 'virtualcams_v2.hdf5')
+        trainfile = os.path.join(dataset_path, 'virtualcams_TNoise0.5.hdf5')
     else:
-        trainfile = [os.path.join(dataset_path, 'virtualcams_v2.hdf5'), 
-                     os.path.join(dataset_path, 'realcams_v2.hdf5')]
+        trainfile = [os.path.join(dataset_path, 'virtualcams_TNoise0.5.hdf5'),
+                     os.path.join(dataset_path, 'realcams.hdf5')]
 
 
 
@@ -409,8 +402,10 @@ if __name__ == '__main__':
         'scene_verts_path': os.path.join(dataset_path, 'scenes_downsampled'),
         'scene_sdf_path': os.path.join(dataset_path,'scenes_sdf'),
         'scene_model_ckpt': os.path.join(proj_path,'data/resnet18.pth'),
-        'human_model_path': '/is/ps2/yzhang/body_models/VPoser',
-        'vposer_ckpt_path': '/is/ps2/yzhang/body_models/VPoser/vposer_v1_0',
+        # 'human_model_path': '/is/ps2/yzhang/body_models/VPoser',
+        # 'vposer_ckpt_path': '/is/ps2/yzhang/body_models/VPoser/vposer_v1_0',
+        'human_model_path': '/data/smpl_models',
+        'vposer_ckpt_path': '/data/smpl_models/vposer_v1_0',
         'init_lr_s': args.lr_s,
         'init_lr_h': args.lr_h,
         'batch_size': args.batch_size, # >1
@@ -418,7 +413,8 @@ if __name__ == '__main__':
         'loss_weight_anealing': True,
         'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         'fine_tuning': None, # or specify the path to resume training
-        'save_dir': save_dir, #'/is/ps2/yzhang/workspaces/smpl-env-gen-3d/checkpoints',
+        'save_dir' : save_dir,
+        'ckp_dir': ckp_dir,
         'contact_id_folder': os.path.join(dataset_path, 'body_segments'),
         'contact_part': ['back','butt','L_Hand','R_Hand','L_Leg','R_Leg','thighs'],
         'saving_per_X_ep': 2,

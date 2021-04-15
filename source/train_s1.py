@@ -39,7 +39,10 @@ class TrainOP:
             setattr(self, key, val)
 
         if not os.path.exists(self.save_dir):
-            os.makedirs(self.save_dir)
+            os.mkdir(self.save_dir)
+
+        if len(self.ckp_dir) > 0:
+            self.resume_training = True
 
         ### define model
         if self.use_cont_rot:
@@ -216,7 +219,7 @@ class TrainOP:
 
         starting_ep = 0
         if self.resume_training:
-            ckp_list = sorted(glob.glob(os.path.join(self.save_dir,'epoch-*.ckp')),
+            ckp_list = sorted(glob.glob(os.path.join(self.ckp_dir,'epoch-*.ckp')),
                                 key=os.path.getmtime)
             if len(ckp_list)>0:
                 checkpoint = torch.load(ckp_list[-1])
@@ -338,7 +341,7 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_dir', type=str, default=os.getcwd(),
+    parser.add_argument('--save_dir_s1', type=str, default=os.getcwd(),
                         help='dir for checkpoints')
 
     parser.add_argument('--batch_size', type=int, default=128,
@@ -362,26 +365,25 @@ if __name__ == '__main__':
 
 
     args = parser.parse_args()
-    save_dir = args.save_dir
-
-
 
     ### setup dataset paths and traing configures
     dataset_path = '/data/proxe'
-    
-    if save_dir == 'None':
-        print('[error] the checkpoint save directory should be specified.')
-        sys.exit(0)
-    else:
-        save_dir = save_dir
-        resume_training=True
 
+    KST = datetime.timezone(datetime.timedelta(hours=9))
+    save_folder = str(datetime.datetime.now(tz=KST))[5:-16]
+    save_folder = save_folder.replace(" ", "_")
+    save_dir= '/home/ryeon/project/psi/checkpoints/s1/{}'.format(save_folder)
+
+    ckp_dir = args.ckp_dir
+    resume_training=False
 
     if args.only_vircam == 1:
         trainfile = os.path.join(dataset_path, 'virtualcams_TNoise0.5.hdf5')
     else:
         trainfile = [os.path.join(dataset_path, 'virtualcams_TNoise0.5.hdf5'),
                      os.path.join(dataset_path, 'realcams.hdf5')]
+
+    resume_training=False
 
 
     trainconfig={
@@ -400,7 +402,8 @@ if __name__ == '__main__':
         'loss_weight_anealing': True,
         'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         'fine_tuning': None,
-        'save_dir': save_dir,
+        'save_dir' : save_dir,
+        'ckp_dir': ckp_dir,
         'contact_id_folder': os.path.join(dataset_path, 'body_segments'),
         'contact_part': ['back','butt','L_Hand','R_Hand','L_Leg','R_Leg','thighs'],
         'saving_per_X_ep': 2,
