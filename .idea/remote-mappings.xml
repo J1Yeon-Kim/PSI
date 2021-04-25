@@ -10,6 +10,13 @@
             </list>
           </settings>
         </remote-mappings>
+        <remote-mappings server-id="python@sftp://uwang@nipa:16022/home/uwang/anaconda3/envs/psi/bin/python">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/home/uwang/psi_jy" />
+            </list>
+          </settings>
+        </remote-mappings>
       </list>
     </list>
   </component>

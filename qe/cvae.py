@@ -408,17 +408,17 @@ class HumanCVAES2(nn.Module):
 
 
 
-class HumanCVAES1(nn.Module):
+class HumanCVAE(nn.Module):
     ''' 
     one stage-model, sampling global trans and local pose at the same time
     '''
     def __init__(self, 
-                 latentD=512, 
-                 n_dim_body=75,
+                 latentD=128,
+                 n_dim_body=51,
                  scene_model_ckpt=None,
                  test=False
                  ):
-        super(HumanCVAES1, self).__init__()
+        super(HumanCVAE, self).__init__()
 
         self.test = test
         self.eps_d = 32
@@ -429,15 +429,10 @@ class HumanCVAES1(nn.Module):
             print('[INFO][SceneNet] Using pretrained resnet18 weights.')
             resnet.load_state_dict(torch.load(scene_model_ckpt))
         removed = list(resnet.children())[1:6]
-        self.resnet = nn.Sequential(nn.Conv2d(2, 64, kernel_size=7, 
-                                                stride=2, padding=3,
-                                                bias=False),
+        self.resnet = nn.Sequential(nn.Conv2d(2, 64, kernel_size=7, stride=2, padding=3,bias=False),
                                     *removed)
         self.conv = nn.Conv2d(128,32,3,1,1) # b x f_dim x 16 x 16
         self.fc = nn.Linear(32*16*16,latentD)
-
-
-
 
         ## human encoder
         self.linear_in = nn.Linear(n_dim_body, latentD)
@@ -463,19 +458,18 @@ class HumanCVAES1(nn.Module):
         return eps.mul(var).add_(mu)
 
 
-    def forward(self, x_body, x_s):
+    def forward(self, x_body, x_scene):
         '''
         input: x_body: body representation, [batch, 72D/75D]
-               z_s: scene representation, [batch, 128D]
+               x_scene: scene representation, [batch, 128D]
 
         '''
         
-        b_ = x_s.shape[0]
-        z_s = self.conv(self.resnet(x_s))
+        b_ = x_scene.shape[0]
+        z_s = self.conv(self.resnet(x_scene))
         z_s = self.fc(z_s.view(b_, -1))
 
-        z_h = self.linear_in(x_body)
-
+        z_h = self.linear_in(x_body) # prep for encoder (51->128)
 
         z_hs = torch.cat([z_h, z_s], dim=1)
         z_hs = self.human_encoder(z_hs)
@@ -484,7 +478,8 @@ class HumanCVAES1(nn.Module):
         logvar = self.logvar_enc(z_hs)
 
         z_h = self._sampler(mu, logvar)
-        z_h = self.linear_latent(z_h)
+
+        z_h = self.linear_latent(z_h) # prep for decoder (32->128)
         z_hs = torch.cat([z_h, z_s], dim=1)
 
         z_hs = self.human_decoder(z_hs)

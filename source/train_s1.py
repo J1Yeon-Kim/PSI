@@ -9,7 +9,8 @@ import numpy as np
 import open3d as o3d
 import datetime
 
-proj_path = '/home/ryeon/project/psi'
+# proj_path = '/home/ryeon/project/psi'
+proj_path = '/home/uwang/psi_jy'
 sys.path.append(proj_path)
 
 import torch
@@ -87,8 +88,6 @@ class TrainOP:
                                     )
 
         print('--[INFO] device: '+str(torch.cuda.get_device_name(self.device)) )
-
-
 
     def cal_loss(self, xs, xh, cam_ext, cam_int, max_d,
                  scene_verts, scene_face, 
@@ -203,10 +202,6 @@ class TrainOP:
 
         return [loss_rec_t, loss_rec_p, loss_KL, loss_contact, 
                 loss_vposer, loss_sdf_pene]
-
-
-
-
 
     def train(self, batch_gen):
 
@@ -367,12 +362,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ### setup dataset paths and traing configures
-    dataset_path = '/data/proxe'
+    # dataset_path = '/data/proxe'
+    dataset_path = '/home/uwang/dataset/proxe'
 
     KST = datetime.timezone(datetime.timedelta(hours=9))
     save_folder = str(datetime.datetime.now(tz=KST))[5:-16]
     save_folder = save_folder.replace(" ", "_")
-    save_dir= '/home/ryeon/project/psi/checkpoints/s1/{}'.format(save_folder)
+    # save_dir= '/home/ryeon/project/psi/checkpoints/s1/{}'.format(save_folder)
+    save_dir= '/home/uwang/psi_jy/checkpoints/s1/{}'.format(save_folder)
 
     ckp_dir = args.ckp_dir
     resume_training=False
@@ -393,8 +390,10 @@ if __name__ == '__main__':
         'scene_model_ckpt': os.path.join(proj_path,'data/resnet18.pth'),
         # 'human_model_path': '/is/ps2/yzhang/body_models/VPoser',
         # 'vposer_ckpt_path': '/is/ps2/yzhang/body_models/VPoser/vposer_v1_0',
-        'human_model_path': '/data/smpl_models',
-        'vposer_ckpt_path': '/data/smpl_models/vposer_v1_0',
+        # 'human_model_path': '/data/smpl_models',
+        'human_model_path': '/home/uwang/dataset/smpl_models',
+        # 'vposer_ckpt_path': '/data/smpl_models/vposer_v1_0',
+        'vposer_ckpt_path': '/home/uwang/dataset/smpl_models/vposer_v1_0',
         'init_lr_s': args.lr_s,
         'init_lr_h': args.lr_h,
         'batch_size': args.batch_size, # e.g. 30

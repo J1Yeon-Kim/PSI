@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="ryeon@gpu02:22" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="uwang@nipa:16022" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
       <paths name="ryeon@gpu02:22">
         <serverdata>
           <mappings>
             <mapping deploy="/home/ryeon/project/psi" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="uwang@nipa:16022">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/uwang/psi_jy" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>
