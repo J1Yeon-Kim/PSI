@@ -195,12 +195,7 @@ class GeometryTransformer():
 
         xt_batch_normalized = torch.stack([x,y,z],dim=-1)
 
-
         return torch.cat([xt_batch_normalized, xr_batch],dim=-1)
-
-
-
-
 
 
 

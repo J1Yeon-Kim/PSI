@@ -25,7 +25,7 @@ from human_body_prior.tools.model_loader import load_vposer
 import chamfer_pytorch.dist_chamfer as ext
 
 from cvae import BodyParamParser, HumanCVAE, GeometryTransformer
-from batch_gen_hdf5 import BatchGeneratorWithSceneMesh
+from batch_gen_hdf5 import BatchGeneratorWithAction
 
 import pdb
 
@@ -46,10 +46,11 @@ class TrainOP:
             self.resume_training = True
 
         ### define model
-        if self.use_cont_rot:
-            n_dim_body=72+3
-        else:
-            n_dim_body=72
+        # if self.use_cont_rot:
+        #     n_dim_body=72+3
+        # else:
+        #     n_dim_body=72
+        n_dim_body=51
 
         self.model_h_latentD = 128
         self.model_h = HumanCVAE(latentD=self.model_h_latentD,
@@ -61,47 +62,44 @@ class TrainOP:
 
 
         ### body mesh model
-        self.vposer, _ = load_vposer(self.vposer_ckpt_path, vp_model='snapshot')
-        self.body_mesh_model = smplx.create(self.human_model_path, 
-                                            model_type='smplx',
-                                            gender='neutral', ext='npz',
-                                            num_pca_comps=12,
-                                            create_global_orient=True,
-                                            create_body_pose=True,
-                                            create_betas=True,
-                                            create_left_hand_pose=True,
-                                            create_right_hand_pose=True,
-                                            create_expression=True,
-                                            create_jaw_pose=True,
-                                            create_leye_pose=True,
-                                            create_reye_pose=True,
-                                            create_transl=True,
-                                            batch_size=self.batch_size
-                                            )
-
-        self.smplx_face_idx_np = np.load(os.path.join(self.human_model_path, 
-                                                    'smplx/SMPLX_NEUTRAL.npz'),
-                                        allow_pickle=True)['f'].reshape(-1,3)
-        self.smplx_face_idx = torch.tensor(
-                                    self.smplx_face_idx_np.astype(np.int64), 
-                                    device=self.device
-                                    )
+        # self.vposer, _ = load_vposer(self.vposer_ckpt_path, vp_model='snapshot')
+        # self.body_mesh_model = smplx.create(self.human_model_path,
+        #                                     model_type='smplx',
+        #                                     gender='neutral', ext='npz',
+        #                                     num_pca_comps=12,
+        #                                     create_global_orient=True,
+        #                                     create_body_pose=True,
+        #                                     create_betas=True,
+        #                                     create_left_hand_pose=True,
+        #                                     create_right_hand_pose=True,
+        #                                     create_expression=True,
+        #                                     create_jaw_pose=True,
+        #                                     create_leye_pose=True,
+        #                                     create_reye_pose=True,
+        #                                     create_transl=True,
+        #                                     batch_size=self.batch_size
+        #                                     )
+        #
+        # self.smplx_face_idx_np = np.load(os.path.join(self.human_model_path,
+        #                                             'smplx/SMPLX_NEUTRAL.npz'),
+        #                                 allow_pickle=True)['f'].reshape(-1,3)
+        # self.smplx_face_idx = torch.tensor(
+        #                             self.smplx_face_idx_np.astype(np.int64),
+        #                             device=self.device
+        #                             )
 
         print('--[INFO] device: '+str(torch.cuda.get_device_name(self.device)) )
 
-    def cal_loss(self, xs, xh, cam_ext, cam_int, max_d,
-                 scene_verts, scene_face, 
-                 s_grid_min_batch, s_grid_max_batch, s_grid_sdf_batch,
-                 ep):
+    def cal_loss(self, xa, xh):
 
         # normalize global trans
         xhn = GeometryTransformer.normalize_global_T(xh, cam_int, max_d)
 
-        # convert rotation
+        # # convert rotation
         xhnr = GeometryTransformer.convert_to_6D_rot(xhn)
 
         # forward pass of model 
-        xhnr_rec, mu, logsigma2 = self.model_h(xhnr, xs)
+        xhnr_rec, mu, logsigma2 = self.model_h(xhnr, xa)
 
         # recover rotation
         xhn_rec = GeometryTransformer.convert_to_3D_rot(xhnr_rec)
@@ -245,34 +243,18 @@ class TrainOP:
                 if train_data is None:
                     continue
 
-                [depth_batch, seg_batch, body_batch, 
-                cam_ext_batch, cam_int_batch,max_d_batch,
-                s_verts_batch, s_faces_batch,
-                s_grid_min_batch, s_grid_max_batch, 
-                s_grid_dim_batch, s_grid_sdf_batch] = train_data
+                [action_batch, smpl_batch] = train_data
 
 
                 ### calculate loss
                 [loss_rec_t,
                  loss_rec_p, 
-                 loss_KL, 
-                 loss_contact,
-                 loss_vposer,
-                 loss_sdf_pene] = self.cal_loss(xs=torch.cat([depth_batch,seg_batch],dim=1),
-                                               xh=body_batch,
-                                               cam_ext=cam_ext_batch,
-                                               cam_int = cam_int_batch,
-                                               max_d = max_d_batch,
-                                               scene_verts=s_verts_batch,
-                                               scene_face=s_faces_batch,
-                                               s_grid_min_batch=s_grid_min_batch,
-                                               s_grid_max_batch=s_grid_max_batch,
-                                               s_grid_sdf_batch=s_grid_sdf_batch,
-                                               ep=ep)
+                 loss_KL,
+                 loss_vposer,] = self.cal_loss(xa=action_batch, xh=smpl_batch)
                 
 
 
-                loss_coll = loss_sdf_pene
+                # loss_coll = loss_sdf_pene
                 # loss_h = (loss_rec_t + loss_rec_p + loss_vposer+ loss_KL
                 #           + loss_contact+loss_coll)
 
@@ -423,12 +405,17 @@ if __name__ == '__main__':
         mode='train'
 
 
-    batch_gen = BatchGeneratorWithSceneMesh(dataset_path=trainconfig['train_data_path'],
-                                            scene_verts_path = trainconfig['scene_verts_path'],
-                                            scene_sdf_path = trainconfig['scene_sdf_path'],
-                                            mode=mode,
-                                            device=trainconfig['device'],
-                                            read_all_to_ram=False)
+    # batch_gen = BatchGeneratorWithSceneMesh(dataset_path=trainconfig['train_data_path'],
+    #                                         scene_verts_path = trainconfig['scene_verts_path'],
+    #                                         scene_sdf_path = trainconfig['scene_sdf_path'],
+    #                                         mode=mode,
+    #                                         device=trainconfig['device'],
+    #                                         read_all_to_ram=False)
+    action_list = ['6', '7', '8', '11', '12', '14']
+    batch_gen = BatchGeneratorWithAction(dataset_path='/home/uwang/psi_jy/data/ava_action_smpl.json',
+                                         action_list=action_list,
+                                         device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+                                         mode='train')
 
 
     train_op = TrainOP(trainconfig, lossconfig)

@@ -26,18 +26,46 @@ import pdb
 ### scenes for testing: 
 # ['MPH16', 'MPH1Library','N0SittingBooth', 'N3OpenArea']
 
-class BatchGeneratorWithActionPair():
-    def __init__(self, dataset_path, device, mode='train'):
+class BatchGeneratorWithAction():
+    def __init__(self, dataset_path, action_list,  device, mode='train'):
+        self.index_rec = 0
         self.device = device
+        self.action_list = action_list
+        action_en = np.eye(len(self.action_list))
+
+        self.action_stream = []
+        self.smpl_stream = []
 
         if os.path.exists(dataset_path):
             with open(dataset_path, 'r') as f:
-                self.dataset = f
+                self.dataset =json.load(f)
+                self.frame_list = self.dataset.keys()
+                self.n_samples = len(self.dataset)
+
+                for data in self.dataset:
+                    a_id_index = self.action_list.index(self.dataset[data]['action'])
+                    self.action_stream.append(action_en[a_id_index])
+                    self.smpl_stream.append(self.dataset[data]['smpl'])
+
+    def has_next_batch(self):
+        if self.index_rec < self.n_samples:
+            return True
+        else:
+            return False
 
 
+    def next_batch(self, batch_size):
+        lb = self.index_rec
+        ub = min(self.index_rec+batch_size, self.n_samples)
+        self.index_rec = self.index_rec + batch_size
 
+        if ub-lb < batch_size:
+            return None
 
+        action_batch = torch.tensor(self.action_stream[lb:ub], dtype=torch.float32,device=self.device)
+        smpl_batch = torch.tensor(self.smpl_stream[lb:ub], dtype=torch.float32,device=self.device)
 
+        return [action_batch, smpl_batch]
 
 
 class BatchGeneratorWithSceneMesh():
@@ -818,12 +846,18 @@ if __name__=='__main__':
     #                                   read_all_to_ram=False)
 
 
-    batch_gen = BatchGeneratorWithSceneMesh(dataset_path='/is/cluster/yzhang/PROX/virtualcams3.hdf5',
-                                            scene_verts_path = '/is/cluster/work/yzhang/PROX/scenes_downsampled',
-                                            scene_sdf_path = '/is/cluster/work/yzhang/PROX/scenes_sdf',
-                                            mode='train',
-                                            device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-                                            read_all_to_ram=False)
+    # batch_gen = BatchGeneratorWithSceneMesh(dataset_path='/is/cluster/yzhang/PROX/virtualcams3.hdf5',
+    #                                         scene_verts_path = '/is/cluster/work/yzhang/PROX/scenes_downsampled',
+    #                                         scene_sdf_path = '/is/cluster/work/yzhang/PROX/scenes_sdf',
+    #                                         mode='train',
+    #                                         device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+    #                                         read_all_to_ram=False)
+
+    action_list = ['6', '7', '8', '11', '12', '14']
+    batch_gen = BatchGeneratorWithAction(dataset_path='/home/uwang/psi_jy/data/ava_action_smpl.json',
+                                         action_list = action_list,
+                                         device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+                                         mode='train')
 
     while batch_gen.has_next_batch():
         data = batch_gen.next_batch(4)

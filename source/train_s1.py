@@ -336,8 +336,7 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_dir_s1', type=str, default=os.getcwd(),
-                        help='dir for checkpoints')
+    parser.add_argument('--ckp_dir', type=str, default='', help='dir for checkpoints')
 
     parser.add_argument('--batch_size', type=int, default=128,
                         help='batch size to train')
@@ -436,5 +435,5 @@ if __name__ == '__main__':
 
 
     train_op = TrainOP(trainconfig, lossconfig)
-    train_op.train(batch_gen)
+lb    train_op.train(batch_gen)
 
